@@ -2,3 +2,6 @@ google-generativeai
 rich
 python-dotenv
 streamlit
+
+pydantic
+tenacity
