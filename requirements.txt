@@ -1,5 +1,4 @@
 google-generativeai
 rich
 python-dotenv
-
 streamlit
