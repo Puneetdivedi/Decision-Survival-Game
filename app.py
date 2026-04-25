@@ -19,6 +19,9 @@ if "history" not in st.session_state:
     st.session_state.turn = 1
     st.session_state.max_turns = 5
     st.session_state.total_regret_score = 0
+    st.session_state.wealth = 50
+    st.session_state.happiness = 50
+    st.session_state.health = 50
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
@@ -92,6 +95,11 @@ def submit_decision(choice):
         {{
           "outcome": "What actually happened based on their choice (financial, career, emotional impact). Be realistic and impactful.",
           "parallel_reality": "What would have happened if they chose the most obvious alternative. Show the divergence.",
+          "stats_change": {
+            "wealth": <integer between -20 and +30>,
+            "happiness": <integer between -20 and +30>,
+            "health": <integer between -20 and +30>
+          },
           "regret_engine": {{
             "missed_opportunity": "The exact cost (money, time, or relationship) of their foregone path.",
             "regret_score_change": <integer between 0 and 20>
@@ -110,6 +118,11 @@ def submit_decision(choice):
             st.session_state.consequences = result
             regret = result.get("regret_engine", {})
             st.session_state.total_regret_score += regret.get("regret_score_change", 0)
+            
+            stats_change = result.get("stats_change", {})
+            st.session_state.wealth = max(0, min(100, st.session_state.wealth + stats_change.get("wealth", 0)))
+            st.session_state.happiness = max(0, min(100, st.session_state.happiness + stats_change.get("happiness", 0)))
+            st.session_state.health = max(0, min(100, st.session_state.health + stats_change.get("health", 0)))
             
             st.session_state.turn += 1
             if st.session_state.turn <= st.session_state.max_turns:
@@ -139,6 +152,9 @@ def reset_game():
     st.session_state.history = []
     st.session_state.turn = 1
     st.session_state.total_regret_score = 0
+    st.session_state.wealth = 50
+    st.session_state.happiness = 50
+    st.session_state.health = 50
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
@@ -165,6 +181,15 @@ col1, col2 = st.columns([2, 1])
 
 with col2:
     st.subheader("📊 Engine Metrics")
+    
+    m1, m2, m3 = st.columns(3)
+    stats_delta = st.session_state.consequences.get("stats_change", {}) if st.session_state.consequences else {}
+    m1.metric("Wealth", f"{st.session_state.wealth}", stats_delta.get("wealth", 0))
+    m2.metric("Happiness", f"{st.session_state.happiness}", stats_delta.get("happiness", 0))
+    m3.metric("Health", f"{st.session_state.health}", stats_delta.get("health", 0))
+    
+    st.markdown("---")
+    
     st.metric("Phase", f"{min(st.session_state.turn, st.session_state.max_turns)} / {st.session_state.max_turns}")
     current_age = 22 + (min(st.session_state.turn, st.session_state.max_turns) - 1) * 3
     st.metric("Simulated Age", f"{current_age} Years Old")

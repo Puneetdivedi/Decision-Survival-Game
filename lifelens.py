@@ -29,6 +29,9 @@ class LifeLensGame:
         self.turn = 1
         self.max_turns = 5
         self.total_regret_score = 0
+        self.wealth = 50
+        self.happiness = 50
+        self.health = 50
         
         self.system_instructions = """
 You are LifeLens AI, an advanced, highly realistic life simulation and psychological analysis engine.
@@ -120,6 +123,11 @@ Return ONLY JSON matching this structure:
 {{
   "outcome": "What actually happened based on their choice (financial, career, emotional impact). Be realistic and impactful.",
   "parallel_reality": "What would have happened if they chose the most obvious alternative. Show the divergence.",
+  "stats_change": {
+    "wealth": <integer between -20 and +30>,
+    "happiness": <integer between -20 and +30>,
+    "health": <integer between -20 and +30>
+  },
   "regret_engine": {{
     "missed_opportunity": "The exact cost (money, time, or relationship) of their foregone path.",
     "regret_score_change": <integer between 0 and 20>
@@ -148,6 +156,23 @@ Return ONLY JSON matching this structure:
             regret = result.get("regret_engine", {})
             score_change = regret.get("regret_score_change", 0)
             self.total_regret_score += score_change
+            
+            stats_change = result.get("stats_change", {})
+            w_diff = stats_change.get("wealth", 0)
+            hap_diff = stats_change.get("happiness", 0)
+            hlth_diff = stats_change.get("health", 0)
+            
+            self.wealth = max(0, min(100, self.wealth + w_diff))
+            self.happiness = max(0, min(100, self.happiness + hap_diff))
+            self.health = max(0, min(100, self.health + hlth_diff))
+            
+            console.print(Panel(
+                f"[green]Wealth: {self.wealth}/100 ({w_diff:+d})[/green] | "
+                f"[yellow]Happiness: {self.happiness}/100 ({hap_diff:+d})[/yellow] | "
+                f"[blue]Health: {self.health}/100 ({hlth_diff:+d})[/blue]",
+                title="Life Stats Updated",
+                border_style="cyan"
+            ))
             
             console.print(f"[bold red]Regret Engine:[/bold red] {regret.get('missed_opportunity', '')}")
             console.print(f"[bold red]Regret +{score_change} (Total: {self.total_regret_score})[/bold red]\n")
