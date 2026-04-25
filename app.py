@@ -2,8 +2,7 @@ import streamlit as st
 import os
 import json
 from typing import Dict, Any
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,12 +38,9 @@ IMPORTANT RULES:
 
 def call_ai(prompt: str) -> Dict[str, Any]:
     try:
-        client = genai.Client(api_key=st.session_state.api_key)
-        response = client.models.generate_content(
-            model='gemini-1.5-pro',
-            contents=system_instructions + "\n\n" + prompt,
-            config=types.GenerateContentConfig(response_mime_type="application/json")
-        )
+        genai.configure(api_key=st.session_state.api_key)
+        model = genai.GenerativeModel('gemini-1.5-pro', generation_config={"response_mime_type": "application/json"})
+        response = model.generate_content(system_instructions + "\n\n" + prompt)
         text = response.text.strip()
         if text.startswith("```json"):
             text = text[7:]

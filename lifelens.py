@@ -2,8 +2,7 @@ import os
 import json
 import time
 from typing import List, Dict, Any
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
@@ -23,7 +22,8 @@ class LifeLensGame:
             console.print(Panel("[bold red]CRITICAL ERROR[/bold red]: GEMINI_API_KEY not found in environment.\nPlease set it in a .env file or export it.", border_style="red"))
             exit(1)
         
-        self.client = genai.Client(api_key=self.api_key)
+        genai.configure(api_key=self.api_key)
+        self.model = genai.GenerativeModel('gemini-1.5-pro', generation_config={"response_mime_type": "application/json"})
         
         self.history = []
         self.turn = 1
@@ -46,11 +46,7 @@ IMPORTANT RULES:
 
     def call_ai(self, prompt: str) -> Dict[str, Any]:
         with console.status("[bold cyan]LifeLens Engine is simulating outcomes...[/bold cyan]", spinner="dots"):
-            response = self.client.models.generate_content(
-                model='gemini-1.5-pro',
-                contents=self.system_instructions + "\n\n" + prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
+            response = self.model.generate_content(self.system_instructions + "\n\n" + prompt)
             try:
                 text = response.text.strip()
                 # Clean markdown wrapper if LLM includes it despite instructions
