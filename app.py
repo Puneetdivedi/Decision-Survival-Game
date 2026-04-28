@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import json
+import pandas as pd
 from dotenv import load_dotenv
 
 from src.engine import LifeLensEngine
@@ -21,6 +22,12 @@ if "history" not in st.session_state:
     st.session_state.wealth = 50
     st.session_state.happiness = 50
     st.session_state.health = 50
+    st.session_state.stats_history = {
+        "Age": [22],
+        "Wealth": [50],
+        "Happiness": [50],
+        "Health": [50]
+    }
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
@@ -73,6 +80,12 @@ def submit_decision(choice):
             st.session_state.happiness = max(0, min(100, st.session_state.happiness + result.stats_change.happiness))
             st.session_state.health = max(0, min(100, st.session_state.health + result.stats_change.health))
             
+            next_age = current_age + 3
+            st.session_state.stats_history["Age"].append(next_age)
+            st.session_state.stats_history["Wealth"].append(st.session_state.wealth)
+            st.session_state.stats_history["Happiness"].append(st.session_state.happiness)
+            st.session_state.stats_history["Health"].append(st.session_state.health)
+            
             st.session_state.turn += 1
             if st.session_state.turn <= st.session_state.max_turns:
                 st.session_state.state = result.next_scenario
@@ -98,15 +111,63 @@ def reset_game():
     st.session_state.wealth = 50
     st.session_state.happiness = 50
     st.session_state.health = 50
+    st.session_state.stats_history = {
+        "Age": [22],
+        "Wealth": [50],
+        "Happiness": [50],
+        "Health": [50]
+    }
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
 
 # UI rendering
-st.title("🧠 LifeLens AI Dashboard")
-st.markdown("Decision Survival Game powered by Gemini 1.5 Pro. Focuses on logic, behavioral modeling, and consequence simulation.")
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Outfit', sans-serif;
+    }
+    .stApp {
+        background: radial-gradient(circle at top, #0f172a 0%, #020617 100%);
+        color: #f8fafc;
+    }
+    div[data-testid="stMetricValue"] {
+        font-size: 2.5rem !important;
+        font-weight: 800 !important;
+        background: linear-gradient(90deg, #38bdf8, #818cf8);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .stButton > button {
+        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+        color: white !important;
+        font-weight: 600;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.5);
+        background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+    }
+    [data-testid="stExpander"] {
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+    }
+</style>
+""", unsafe_allow_html=True)
 
-st.sidebar.title("API Configuration")
+st.title("🧠 LifeLens AI Dashboard")
+st.markdown("Decision Survival Game powered by **Gemini 1.5 Pro**. Focuses on logic, behavioral modeling, and consequence simulation.")
+
+st.sidebar.title("⚙️ API Configuration")
 api_input = st.sidebar.text_input("Gemini API Key", value=st.session_state.api_key, type="password")
 if api_input != st.session_state.api_key:
     st.session_state.api_key = api_input
@@ -137,6 +198,10 @@ with col2:
     current_age = 22 + (min(st.session_state.turn, st.session_state.max_turns) - 1) * 3
     st.metric("Simulated Age", f"{current_age} Years Old")
     st.metric("Cumulative Regret Score", st.session_state.total_regret_score)
+    
+    st.markdown("### 📈 Life Trajectory")
+    df_stats = pd.DataFrame(st.session_state.stats_history).set_index("Age")
+    st.line_chart(df_stats, use_container_width=True)
     
     if st.session_state.history:
         st.markdown("### 🕒 Timeline History")
