@@ -29,6 +29,7 @@ if "history" not in st.session_state:
         "Happiness": [50],
         "Health": [50]
     }
+    st.session_state.traits = []
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
@@ -38,13 +39,13 @@ def get_engine():
         return None
     return LifeLensEngine(api_key=st.session_state.api_key)
 
-def generate_initial_scenario():
+def generate_initial_scenario(player_name, ambition):
     engine = get_engine()
     if not engine:
         return
     with st.spinner("Initializing Life Simulator... Calibrating Regret Engine..."):
         try:
-            st.session_state.state = asyncio.run(engine.generate_initial_scenario())
+            st.session_state.state = asyncio.run(engine.generate_initial_scenario(player_name, ambition))
         except Exception as e:
             st.error(f"Error communicating with AI: {e}")
 
@@ -70,11 +71,16 @@ def submit_decision(choice):
                 st.session_state.max_turns,
                 current_age,
                 st.session_state.history,
+                st.session_state.traits,
                 state.dilemma,
                 choice
             ))
             
             st.session_state.consequences = result
+            if hasattr(result, 'acquired_traits') and result.acquired_traits:
+                for trait in result.acquired_traits:
+                    if trait not in st.session_state.traits:
+                        st.session_state.traits.append(trait)
             st.session_state.total_regret_score += result.regret_engine.regret_score_change
             
             st.session_state.wealth = max(0, min(100, st.session_state.wealth + result.stats_change.wealth))
@@ -118,6 +124,7 @@ def reset_game():
         "Happiness": [50],
         "Health": [50]
     }
+    st.session_state.traits = []
     st.session_state.state = None
     st.session_state.consequences = None
     st.session_state.end_game = None
@@ -177,9 +184,18 @@ if not st.session_state.api_key:
     st.warning("Please enter your Gemini API Key in the sidebar to begin.")
     st.stop()
 
+if st.session_state.traits:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🎒 Acquired Traits & Assets")
+    for trait in st.session_state.traits:
+        st.sidebar.markdown(f"- {trait}")
+
 if st.session_state.state is None and st.session_state.end_game is None:
+    st.subheader("👤 Character Creation")
+    p_name = st.text_input("Player Name", "Alex")
+    p_ambition = st.text_area("Core Ambition", "To build a successful tech startup and achieve financial freedom.")
     if st.button("Start Simulation", type="primary"):
-        generate_initial_scenario()
+        generate_initial_scenario(p_name, p_ambition)
         st.rerun()
 
 col1, col2 = st.columns([2, 1])

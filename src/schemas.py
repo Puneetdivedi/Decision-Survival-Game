@@ -28,6 +28,7 @@ class TurnConsequences(BaseModel):
     stats_change: StatsChange
     regret_engine: RegretMetrics
     bias_detected: str = Field(..., description="A short note on what psychological bias this choice reveals")
+    acquired_traits: List[str] = Field(default_factory=list, description="List of any new traits, skills, or significant assets acquired (e.g., 'Resilience', 'Debt', 'Coding Skills')")
     next_scenario: NextScenario
 
 class EndGameSummary(BaseModel):

@@ -50,19 +50,20 @@ class LifeLensEngine:
             logger.error(f"Error communicating with AI: {e}")
             raise GenerationError(f"Failed to generate response: {e}")
 
-    async def generate_initial_scenario(self) -> InitialScenario:
-        prompt = """
-        Generate the initial scenario for the player. They are 22 years old, starting their adult life. 
-        Make the scenario challenging but realistic (e.g., heavy student debt, a toxic but high-paying first job, or an unconventional high-risk path).
+    async def generate_initial_scenario(self, player_name: str, ambition: str) -> InitialScenario:
+        prompt = f"""
+        Generate the initial scenario for the player named "{player_name}". Their core ambition in life is: "{ambition}".
+        They are 22 years old, starting their adult life. 
+        Make the scenario challenging but realistic, deeply tailored to their ambition.
         Provide the first major life dilemma.
 
         Return ONLY JSON matching this structure:
-        {
+        {{
           "scenario_title": "string",
           "context": "string",
           "dilemma": "string",
           "choices": ["string", "string", "string"]
-        }
+        }}
         """
         text_response = await self._call_ai_async(prompt)
         try:
@@ -71,9 +72,10 @@ class LifeLensEngine:
             logger.error(f"Validation error for InitialScenario: {e}")
             raise ParsingError(f"Failed to parse InitialScenario: {e}")
 
-    async def simulate_turn(self, turn: int, max_turns: int, current_age: int, history: list, current_dilemma: str, choice: str) -> TurnConsequences:
+    async def simulate_turn(self, turn: int, max_turns: int, current_age: int, history: list, current_traits: list, current_dilemma: str, choice: str) -> TurnConsequences:
         prompt = f"""
         The player is on phase {turn} out of {max_turns}. Current age: {current_age}.
+        Their current acquired traits/assets: {json.dumps(current_traits)}
         Their entire past history: {json.dumps(history)}
         For their current dilemma: "{current_dilemma}"
         They chose: "{choice}"
@@ -93,6 +95,7 @@ class LifeLensEngine:
             "regret_score_change": int
           }},
           "bias_detected": "string",
+          "acquired_traits": ["string"],
           "next_scenario": {{
             "scenario_title": "string",
             "context": "string",

@@ -33,16 +33,22 @@ class LifeLensCLI:
         self.wealth = 50
         self.happiness = 50
         self.health = 50
+        self.traits = []
 
     async def start_game(self):
         clear_screen()
         console.print(Panel(Text("LifeLens AI: Decision Engine", justify="center", style="bold magenta"), border_style="magenta", padding=(1, 2)))
         console.print("[dim]Initializing Life Simulator... Loading Parallel Reality Modules... Calibrating Regret Engine...[/dim]\n")
-        time.sleep(2)
+        time.sleep(1)
+        
+        console.print(Panel("Character Creation", style="cyan"))
+        player_name = Prompt.ask("[bold cyan]Enter your name[/bold cyan]", default="Alex")
+        ambition = Prompt.ask("[bold cyan]What is your core ambition in life?[/bold cyan]", default="To build a successful tech startup and achieve financial freedom.")
+        console.print("\n")
 
         try:
             with console.status("[bold cyan]LifeLens Engine is generating your destiny...[/bold cyan]", spinner="dots"):
-                scenario = await self.engine.generate_initial_scenario()
+                scenario = await self.engine.generate_initial_scenario(player_name, ambition)
             await self.play_turn(scenario)
         except LifeLensException as e:
             console.print(f"[red]Engine Error: {e}[/red]")
@@ -75,7 +81,7 @@ class LifeLensCLI:
             try:
                 with console.status("[bold cyan]Simulating parallel realities...[/bold cyan]", spinner="dots"):
                     result = await self.engine.simulate_turn(
-                        self.turn, self.max_turns, current_age, self.history, state.dilemma, user_choice
+                        self.turn, self.max_turns, current_age, self.history, self.traits, state.dilemma, user_choice
                     )
             except Exception as e:
                 console.print(f"[red]Engine error during simulation: {e}[/red]")
@@ -106,7 +112,16 @@ class LifeLensCLI:
                 border_style="cyan"
             ))
             
-            console.print(f"[bold red]Regret Engine:[/bold red] {result.regret_engine.missed_opportunity}")
+            if hasattr(result, 'acquired_traits') and result.acquired_traits:
+                new_traits = []
+                for trait in result.acquired_traits:
+                    if trait not in self.traits:
+                        self.traits.append(trait)
+                        new_traits.append(trait)
+                if new_traits:
+                    console.print(f"[bold green]🎒 Acquired New Traits/Assets:[/bold green] {', '.join(new_traits)}")
+            
+            console.print(f"\n[bold red]Regret Engine:[/bold red] {result.regret_engine.missed_opportunity}")
             console.print(f"[bold red]Regret +{score_change} (Total: {self.total_regret_score})[/bold red]\n")
             
             time.sleep(2)
