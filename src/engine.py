@@ -2,10 +2,11 @@ import json
 import logging
 from typing import Dict, Any, Optional
 import google.generativeai as genai
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from pydantic import ValidationError
 
 from .schemas import InitialScenario, TurnConsequences, EndGameSummary
+from .exceptions import EngineInitializationError, GenerationError, ParsingError
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -24,31 +25,32 @@ IMPORTANT RULES:
 
 class LifeLensEngine:
     def __init__(self, api_key: str):
+        if not api_key:
+            raise EngineInitializationError("API Key must be provided")
         self.api_key = api_key
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel(
             'gemini-1.5-pro',
             generation_config={"response_mime_type": "application/json"}
         )
-        logger.info("LifeLensEngine initialized.")
+        logger.info("LifeLensEngine initialized asynchronously.")
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
-    def _call_ai(self, prompt: str) -> dict:
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(GenerationError))
+    async def _call_ai_async(self, prompt: str) -> str:
         try:
-            logger.info("Calling Gemini API...")
-            response = self.model.generate_content(SYSTEM_INSTRUCTIONS + "\n\n" + prompt)
+            logger.info("Calling Gemini API asynchronously...")
+            response = await self.model.generate_content_async(SYSTEM_INSTRUCTIONS + "\n\n" + prompt)
             text = response.text.strip()
             if text.startswith("```json"):
                 text = text[7:]
             if text.endswith("```"):
                 text = text[:-3]
-            data = json.loads(text.strip())
-            return data
+            return text.strip()
         except Exception as e:
             logger.error(f"Error communicating with AI: {e}")
-            raise
+            raise GenerationError(f"Failed to generate response: {e}")
 
-    def generate_initial_scenario(self) -> InitialScenario:
+    async def generate_initial_scenario(self) -> InitialScenario:
         prompt = """
         Generate the initial scenario for the player. They are 22 years old, starting their adult life. 
         Make the scenario challenging but realistic (e.g., heavy student debt, a toxic but high-paying first job, or an unconventional high-risk path).
@@ -62,14 +64,14 @@ class LifeLensEngine:
           "choices": ["string", "string", "string"]
         }
         """
-        data = self._call_ai(prompt)
+        text_response = await self._call_ai_async(prompt)
         try:
-            return InitialScenario(**data)
+            return InitialScenario.model_validate_json(text_response)
         except ValidationError as e:
             logger.error(f"Validation error for InitialScenario: {e}")
-            raise
+            raise ParsingError(f"Failed to parse InitialScenario: {e}")
 
-    def simulate_turn(self, turn: int, max_turns: int, current_age: int, history: list, current_dilemma: str, choice: str) -> TurnConsequences:
+    async def simulate_turn(self, turn: int, max_turns: int, current_age: int, history: list, current_dilemma: str, choice: str) -> TurnConsequences:
         prompt = f"""
         The player is on phase {turn} out of {max_turns}. Current age: {current_age}.
         Their entire past history: {json.dumps(history)}
@@ -99,14 +101,14 @@ class LifeLensEngine:
           }}
         }}
         """
-        data = self._call_ai(prompt)
+        text_response = await self._call_ai_async(prompt)
         try:
-            return TurnConsequences(**data)
+            return TurnConsequences.model_validate_json(text_response)
         except ValidationError as e:
             logger.error(f"Validation error for TurnConsequences: {e}")
-            raise
+            raise ParsingError(f"Failed to parse TurnConsequences: {e}")
 
-    def generate_end_game(self, history: list, total_regret: int) -> EndGameSummary:
+    async def generate_end_game(self, history: list, total_regret: int) -> EndGameSummary:
         prompt = f"""
         The game has ended. The player's complete decision history is:
         {json.dumps(history)}
@@ -121,9 +123,9 @@ class LifeLensEngine:
           "final_insight": "string"
         }}
         """
-        data = self._call_ai(prompt)
+        text_response = await self._call_ai_async(prompt)
         try:
-            return EndGameSummary(**data)
+            return EndGameSummary.model_validate_json(text_response)
         except ValidationError as e:
             logger.error(f"Validation error for EndGameSummary: {e}")
-            raise
+            raise ParsingError(f"Failed to parse EndGameSummary: {e}")

@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import json
 import pandas as pd
+import asyncio
 from dotenv import load_dotenv
 
 from src.engine import LifeLensEngine
@@ -43,7 +44,7 @@ def generate_initial_scenario():
         return
     with st.spinner("Initializing Life Simulator... Calibrating Regret Engine..."):
         try:
-            st.session_state.state = engine.generate_initial_scenario()
+            st.session_state.state = asyncio.run(engine.generate_initial_scenario())
         except Exception as e:
             st.error(f"Error communicating with AI: {e}")
 
@@ -64,14 +65,14 @@ def submit_decision(choice):
     
     with st.spinner("Simulating Parallel Realities..."):
         try:
-            result = engine.simulate_turn(
+            result = asyncio.run(engine.simulate_turn(
                 st.session_state.turn,
                 st.session_state.max_turns,
                 current_age,
                 st.session_state.history,
                 state.dilemma,
                 choice
-            )
+            ))
             
             st.session_state.consequences = result
             st.session_state.total_regret_score += result.regret_engine.regret_score_change
@@ -100,7 +101,7 @@ def generate_end_game():
         return
     with st.spinner("Processing life trajectory and psychological profile..."):
         try:
-            st.session_state.end_game = engine.generate_end_game(st.session_state.history, st.session_state.total_regret_score)
+            st.session_state.end_game = asyncio.run(engine.generate_end_game(st.session_state.history, st.session_state.total_regret_score))
         except Exception as e:
             st.error(f"Engine Error: {e}")
 

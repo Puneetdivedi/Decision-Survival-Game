@@ -1,6 +1,7 @@
 import os
 import json
 import time
+import asyncio
 from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
@@ -8,6 +9,7 @@ from rich.text import Text
 from dotenv import load_dotenv
 
 from src.engine import LifeLensEngine
+from src.exceptions import LifeLensException
 
 load_dotenv()
 console = Console()
@@ -32,7 +34,7 @@ class LifeLensCLI:
         self.happiness = 50
         self.health = 50
 
-    def start_game(self):
+    async def start_game(self):
         clear_screen()
         console.print(Panel(Text("LifeLens AI: Decision Engine", justify="center", style="bold magenta"), border_style="magenta", padding=(1, 2)))
         console.print("[dim]Initializing Life Simulator... Loading Parallel Reality Modules... Calibrating Regret Engine...[/dim]\n")
@@ -40,13 +42,16 @@ class LifeLensCLI:
 
         try:
             with console.status("[bold cyan]LifeLens Engine is generating your destiny...[/bold cyan]", spinner="dots"):
-                scenario = self.engine.generate_initial_scenario()
-            self.play_turn(scenario)
+                scenario = await self.engine.generate_initial_scenario()
+            await self.play_turn(scenario)
+        except LifeLensException as e:
+            console.print(f"[red]Engine Error: {e}[/red]")
+            exit(1)
         except Exception as e:
             console.print(f"[red]Failed to initialize scenario: {e}[/red]")
             exit(1)
 
-    def play_turn(self, state):
+    async def play_turn(self, state):
         # state is either InitialScenario or NextScenario
         while self.turn <= self.max_turns:
             current_age = 22 + (self.turn - 1) * 3  # Time jumps 3 years per turn
@@ -69,7 +74,7 @@ class LifeLensCLI:
             
             try:
                 with console.status("[bold cyan]Simulating parallel realities...[/bold cyan]", spinner="dots"):
-                    result = self.engine.simulate_turn(
+                    result = await self.engine.simulate_turn(
                         self.turn, self.max_turns, current_age, self.history, state.dilemma, user_choice
                     )
             except Exception as e:
@@ -109,15 +114,15 @@ class LifeLensCLI:
             if self.turn <= self.max_turns:
                 state = result.next_scenario
         
-        self.end_game()
+        await self.end_game()
 
-    def end_game(self):
+    async def end_game(self):
         console.print("\n[bold cyan]=== SIMULATION COMPLETE ===[/bold cyan]")
         console.print("Processing life trajectory and psychological profile...\n")
         
         try:
             with console.status("[bold cyan]Analyzing biases...[/bold cyan]", spinner="dots"):
-                final = self.engine.generate_end_game(self.history, self.total_regret_score)
+                final = await self.engine.generate_end_game(self.history, self.total_regret_score)
         except Exception as e:
             console.print(f"[red]Failed to generate end game: {e}[/red]")
             return
@@ -130,6 +135,6 @@ class LifeLensCLI:
 if __name__ == "__main__":
     try:
         game = LifeLensCLI()
-        game.start_game()
+        asyncio.run(game.start_game())
     except KeyboardInterrupt:
         console.print("\n[red]Simulation aborted.[/red]")
