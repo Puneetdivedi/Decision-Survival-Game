@@ -146,6 +146,16 @@ class LifeLensCLI:
         console.print(Panel(final.bias_revelation, title="Bias Detector", border_style="red"))
         console.print(Panel(final.biggest_regret, title="Biggest Regret", border_style="magenta"))
         console.print(f"\n[bold italic white]LifeLens Insight:[/bold italic white] {final.final_insight}\n")
+        
+        os.makedirs("exports", exist_ok=True)
+        filename = f"exports/life_report_{int(time.time())}.json"
+        with open(filename, "w") as f:
+            json.dump({
+                "traits": self.traits,
+                "history": self.history,
+                "final_report": final.model_dump()
+            }, f, indent=2)
+        console.print(f"[bold green]💾 Life Report auto-saved to: {filename}[/bold green]\n")
 
 if __name__ == "__main__":
     try:

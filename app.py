@@ -195,6 +195,8 @@ if st.session_state.state is None and st.session_state.end_game is None:
     p_name = st.text_input("Player Name", "Alex")
     p_ambition = st.text_area("Core Ambition", "To build a successful tech startup and achieve financial freedom.")
     if st.button("Start Simulation", type="primary"):
+        st.session_state.player_name = p_name
+        st.session_state.ambition = p_ambition
         generate_initial_scenario(p_name, p_ambition)
         st.rerun()
 
@@ -235,6 +237,28 @@ with col1:
         st.warning(f"**Bias Detector:**\n{final.bias_revelation}")
         st.error(f"**Biggest Regret:**\n{final.biggest_regret}")
         st.success(f"**Final Insight:**\n{final.final_insight}")
+        
+        report_data = {
+            "Player": st.session_state.get("player_name", "Unknown"),
+            "Ambition": st.session_state.get("ambition", "Unknown"),
+            "Final_Stats": {
+                "Wealth": st.session_state.wealth,
+                "Happiness": st.session_state.happiness,
+                "Health": st.session_state.health,
+            },
+            "Total_Regret": st.session_state.total_regret_score,
+            "Traits": st.session_state.traits,
+            "Decisions": st.session_state.history,
+            "End_Summary": final.model_dump()
+        }
+        st.download_button(
+            label="💾 Download Life Report",
+            data=json.dumps(report_data, indent=2),
+            file_name=f"life_report_{st.session_state.get('player_name', 'Player')}.json",
+            mime="application/json",
+            type="primary"
+        )
+        st.markdown("---")
         
         if st.button("Start New Life"):
             reset_game()
